@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CAT 3516B Data Visualizer</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body { margin: 0; padding: 20px; font-family: Arial, sans-serif; }
+        .chart { width: 100%; height: 400px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <h1>CAT 3516B Engine Data</h1>
+    <div id="speedChart" class="chart"></div>
+    <div id="tempChart" class="chart"></div>
+    <div id="pressureChart" class="chart"></div>
+
+    <script>
+        const maxPoints = 100;
+        let timestamps = [];
+        let speeds = [];
+        let temps = [];
+        let pressures = [];
+
+        function updateCharts(data) {
+            const time = new Date().toLocaleTimeString();
+            
+            timestamps.push(time);
+            speeds.push(data.data[0xCF00400][190] / 8); // Engine Speed
+            temps.push((data.data[0xFEEE400][110] - 40)); // Coolant Temp
+            pressures.push(data.data[0xFEEF600][100] / 4); // Oil Pressure
+
+            if (timestamps.length > maxPoints) {
+                timestamps.shift();
+                speeds.shift();
+                temps.shift();
+                pressures.shift();
+            }
+
+            Plotly.newPlot('speedChart', [{
+                x: timestamps,
+                y: speeds,
+                type: 'line',
+                name: 'Engine Speed'
+            }], {
+                title: 'Engine Speed (RPM)',
+                xaxis: { title: 'Time' },
+                yaxis: { title: 'RPM' }
+            });
+
+            Plotly.newPlot('tempChart', [{
+                x: timestamps,
+                y: temps,
+                type: 'line',
+                name: 'Coolant Temperature'
+            }], {
+                title: 'Coolant Temperature (°C)',
+                xaxis: { title: 'Time' },
+                yaxis: { title: '°C' }
+            });
+
+            Plotly.newPlot('pressureChart', [{
+                x: timestamps,
+                y: pressures,
+                type: 'line',
+                name: 'Oil Pressure'
+            }], {
+                title: 'Oil Pressure (kPa)',
+                xaxis: { title: 'Time' },
+                yaxis: { title: 'kPa' }
+            });
+        }
+
+        const ws = new WebSocket('ws://localhost:8080');
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            updateCharts(data);
+        };
+    </script>
+</body>
+</html>
